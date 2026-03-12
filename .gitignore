@@ -3,4 +3,5 @@
 model/
 __pycache__/
 *.pyc
+TODO.txt
 .DS_Store

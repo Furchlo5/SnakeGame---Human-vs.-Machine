@@ -1,5 +1,5 @@
 """
-hvai_game.py — Human vs. AI dual-field Snake game
+hvp2_game.py — P1 vs. P2 dual-field Snake game
 ===================================================
 Window: 1000 × 540 px  (500 left | thin divider | 500 right)
         + 40 px header bar
@@ -13,13 +13,13 @@ DIV_X   = 500  (divider boundary — lethal for both on contact)
 Divider wall
 ------------
 Visual : 4 px blue line at x = 500
-Hitbox : Human dies at x >= 500 | AI dies at x < 500
-         (snake enters the cell containing the divider → game over)
+Hitbox : P1 dies at x >= 500 | P2 dies at x < 500
+         (snake enters the cell contp2ning the divider → game over)
 
-AI virtual coordinates
+P2 virtual coordinates
 ----------------------
-Model sees x in [0, 500) — same as its training space.
-Real AI x is in [500, 1000).  offset = 500.
+Model sees x in [0, 500) — same as its trp2ning space.
+Real P2 x is in [500, 1000).  offset = 500.
   virtual_x = real_x - 500
 """
 
@@ -43,7 +43,7 @@ DIV_VIS = 4            # visual divider width in pixels
 WIN_W   = FIELD_W * 2  # = 1000
 WIN_H   = HEADER + FIELD_H  # = 540
 
-AI_OFFSET = DIV_X      # subtract from real AI x → virtual x for model
+P2_OFFSET = DIV_X      # subtract from real P2 x → virtual x for model
 
 
 # ──────────────────────────────────────────────
@@ -60,24 +60,24 @@ class C:
     H_BODY1 = (40,  160,  40)
     H_BODY2 = (25,  110,  25)
 
-    AI_HEAD  = (80,  180, 255)
-    AI_BODY1 = (40,  110, 200)
-    AI_BODY2 = (25,   70, 150)
+    P2_HEAD  = (80,  180, 255)
+    P2_BODY1 = (40,  110, 200)
+    P2_BODY2 = (25,   70, 150)
 
     FOOD_H  = (220,  55,  55)
-    FOOD_AI = (255, 165,   0)
+    FOOD_P2 = (255, 165,   0)
 
     TEXT     = (200, 200, 200)
     DEAD_DIM = (0,   0,   0,  140)   # SRCALPHA overlay for dead side
     H_SCORE  = (120, 230, 120)
-    AI_SCORE = (100, 180, 255)
+    P2_SCORE = (100, 180, 255)
     BORDER   = (50,  50,  80)
     
     BTN_BG   = (40, 40, 60)
     BTN_HOV  = (60, 60, 85)
     BTN_TXT  = (220, 220, 220)
     
-SCORES_FILE = "scores_hvai.json"
+SCORES_FILE = "scores_hvh.json"
 
 
 
@@ -109,9 +109,9 @@ def _move_pt(head: Point, direction: Direction) -> Point:
 
 
 # ──────────────────────────────────────────────
-# HumanVsAIGame
+# HumanVsHumanGame
 # ──────────────────────────────────────────────
-class HumanVsAIGame:
+class HumanVsHumanGame:
     """
     Dual-field Snake.
 
@@ -122,7 +122,7 @@ class HumanVsAIGame:
 
     def __init__(self):
         pygame.init()
-        pygame.display.set_caption("Snake — Human vs. AI")
+        pygame.display.set_caption("Snake — P1 vs. P2")
         self.display = pygame.display.set_mode((WIN_W, WIN_H))
         self.clock   = pygame.time.Clock()
 
@@ -152,39 +152,49 @@ class HumanVsAIGame:
             try:
                 with open(SCORES_FILE, 'r') as f:
                     data = json.load(f)
-                    human_scores = data.get("human", [{"score": 0, "name": "Anonymous"}] * 10)
-                    # Support legacy integer lists
-                    if human_scores and isinstance(human_scores[0], int):
-                        human_scores = [{"score": s, "name": "Anonymous"} for s in human_scores]
+                    p1_scores = data.get("human", [{"score": 0, "name": "Anonymous"}] * 10)
+                    p2_scores = data.get("human2", [{"score": 0, "name": "Anonymous"}] * 10)
                     
-                    # Sort logic
-                    human_scores = sorted(human_scores, key=lambda x: x["score"], reverse=True)[:10]
-                    ai_scores = data.get("ai", sorted([0]*10, reverse=True))[:10]
+                    if p1_scores and isinstance(p1_scores[0], int):
+                        p1_scores = [{"score": s, "name": "Anonymous"} for s in p1_scores]
+                    if p2_scores and isinstance(p2_scores[0], int):
+                        p2_scores = [{"score": s, "name": "Anonymous"} for s in p2_scores]
+                    
+                    p1_scores = sorted(p1_scores, key=lambda x: x["score"], reverse=True)[:10]
+                    p2_scores = sorted(p2_scores, key=lambda x: x["score"], reverse=True)[:10]
                     
                     self.high_scores = {
-                        "human": human_scores,
-                        "ai": ai_scores
+                        "p1": p1_scores,
+                        "p2": p2_scores
                     }
             except Exception:
-                self.high_scores = {"human": [{"score": 0, "name": "Anonymous"}] * 10, "ai": [0]*10}
+                self.high_scores = {"p1": [{"score": 0, "name": "Anonymous"}] * 10, "p2": [{"score": 0, "name": "Anonymous"}] * 10}
         else:
-            self.high_scores = {"human": [{"score": 0, "name": "Anonymous"}] * 10, "ai": [0]*10}
+            self.high_scores = {"p1": [{"score": 0, "name": "Anonymous"}] * 10, "p2": [{"score": 0, "name": "Anonymous"}] * 10}
             self._save_scores()
 
     def _save_scores(self) -> None:
         try:
-            with open(SCORES_FILE, 'w') as f:
-                json.dump(self.high_scores, f)
+            with open(SCORES_FILE, 'r+') as f:
+                data = json.load(f)
+                data["human"] = self.high_scores["p1"]
+                data["human2"] = self.high_scores["p2"]
+                f.seek(0)
+                json.dump(data, f)
+                f.truncate()
+        except FileNotFoundError:
+            try:
+                with open(SCORES_FILE, 'w') as f:
+                    data = {"human": self.high_scores["p1"], "human2": self.high_scores["p2"]}
+                    json.dump(data, f)
+            except Exception as e:
+                print(f"Error saving scores: {e}")
         except Exception as e:
             print(f"Error saving scores: {e}")
 
     def _add_scores(self) -> None:
-        # Note: _add_scores is now just handling AI logic. Human scores are added via the UI flow.
-        self.high_scores["ai"].append(self.ai_score)
-        self.high_scores["ai"].sort(reverse=True)
-        self.high_scores["ai"] = self.high_scores["ai"][:10]
-        
-        self._save_scores()
+        # Handled in UI
+        pass
 
     # ─────────────────────────────────────────
     # Reset
@@ -193,74 +203,74 @@ class HumanVsAIGame:
     def reset(self) -> None:
         self.frame = 0
 
-        # Human snake — centre of left field
+        # P1 snake — centre of left field
         hx = (FIELD_W // 2 // BLOCK) * BLOCK           # 240
         hy = (FIELD_H // 2 // BLOCK) * BLOCK + HEADER  # 260
-        self.human_dir   = Direction.RIGHT
-        self.human_snake = [Point(hx, hy), Point(hx-BLOCK, hy), Point(hx-2*BLOCK, hy)]
-        self.human_head  = self.human_snake[0]
-        self.human_score = 0
-        self.human_alive = True
+        self.p1_dir   = Direction.RIGHT
+        self.p1_snake = [Point(hx, hy), Point(hx-BLOCK, hy), Point(hx-2*BLOCK, hy)]
+        self.p1_head  = self.p1_snake[0]
+        self.p1_score = 0
+        self.p1_alive = True
 
-        # AI snake — centre of right field
+        # P2 snake — centre of right field
         ax = DIV_X + (FIELD_W // 2 // BLOCK) * BLOCK   # 740
-        self.ai_dir   = Direction.RIGHT
-        self.ai_snake = [Point(ax, hy), Point(ax-BLOCK, hy), Point(ax-2*BLOCK, hy)]
-        self.ai_head  = self.ai_snake[0]
-        self.ai_score = 0
-        self.ai_alive = True
+        self.p2_dir   = Direction.RIGHT
+        self.p2_snake = [Point(ax, hy), Point(ax-BLOCK, hy), Point(ax-2*BLOCK, hy)]
+        self.p2_head  = self.p2_snake[0]
+        self.p2_score = 0
+        self.p2_alive = True
         
         self.waiting_to_start = True
 
-        self._place_food_human()
-        self._place_food_ai()
+        self._place_food_p1()
+        self._place_food_p2()
 
     # ─────────────────────────────────────────
     # Food
     # ─────────────────────────────────────────
 
-    def _place_food_human(self) -> None:
+    def _place_food_p1(self) -> None:
         while True:
             pt = Point(random.randrange(BLOCK, FIELD_W - BLOCK, BLOCK),
                        random.randrange(HEADER + BLOCK, WIN_H - BLOCK, BLOCK))
-            if pt not in self.human_snake:
-                self.human_food = pt; break
+            if pt not in self.p1_snake:
+                self.p1_food = pt; break
 
-    def _place_food_ai(self) -> None:
+    def _place_food_p2(self) -> None:
         while True:
             pt = Point(random.randrange(DIV_X + BLOCK, WIN_W - BLOCK, BLOCK),
                        random.randrange(HEADER + BLOCK, WIN_H - BLOCK, BLOCK))
-            if pt not in self.ai_snake:
-                self.ai_food = pt; break
+            if pt not in self.p2_snake:
+                self.p2_food = pt; break
 
     # ─────────────────────────────────────────
     # Collision  (hitbox = boundary cell entry)
     # ─────────────────────────────────────────
 
-    def _human_collision(self, pt: Point) -> bool:
+    def _p1_collision(self, pt: Point) -> bool:
         if pt.x < 0 or pt.x >= DIV_X:       return True   # left wall OR divider
         if pt.y < HEADER or pt.y >= WIN_H:   return True   # top / bottom
-        if pt in self.human_snake[1:]:        return True   # self
+        if pt in self.p1_snake[1:]:        return True   # self
         return False
 
-    def _ai_collision(self, pt: Point) -> bool:
+    def _p2_collision(self, pt: Point) -> bool:
         if pt.x < DIV_X or pt.x >= WIN_W:   return True   # divider OR right wall
         if pt.y < HEADER or pt.y >= WIN_H:  return True   # top / bottom
-        if pt in self.ai_snake[1:]:          return True   # self
+        if pt in self.p2_snake[1:]:          return True   # self
         return False
 
-    def ai_collision_virtual(self, vpt: Point) -> bool:
-        """Collision check in model-space coords (real_x = vpt.x + AI_OFFSET)."""
-        return self._ai_collision(Point(vpt.x + AI_OFFSET, vpt.y))
+    def p2_collision_virtual(self, vpt: Point) -> bool:
+        """Collision check in model-space coords (real_x = vpt.x + P2_OFFSET)."""
+        return self._p2_collision(Point(vpt.x + P2_OFFSET, vpt.y))
 
     # ─────────────────────────────────────────
-    # AI state vector  (virtual coordinates)
+    # P2 state vector  (virtual coordinates)
     # ─────────────────────────────────────────
 
-    def get_ai_state(self) -> np.ndarray:
-        head  = Point(self.ai_head.x - AI_OFFSET, self.ai_head.y)
-        food  = Point(self.ai_food.x - AI_OFFSET, self.ai_food.y)
-        dir_  = self.ai_dir
+    def get_p2_state(self) -> np.ndarray:
+        head  = Point(self.p2_head.x - P2_OFFSET, self.p2_head.y)
+        food  = Point(self.p2_food.x - P2_OFFSET, self.p2_food.y)
+        dir_  = self.p2_dir
 
         pt_r = Point(head.x + BLOCK, head.y)
         pt_l = Point(head.x - BLOCK, head.y)
@@ -272,7 +282,7 @@ class HumanVsAIGame:
         du = dir_ == Direction.UP
         dd = dir_ == Direction.DOWN
 
-        def d(vpt): return self.ai_collision_virtual(vpt)
+        def d(vpt): return self.p2_collision_virtual(vpt)
 
         state = [
             (dr and d(pt_r)) or (dl and d(pt_l)) or (du and d(pt_u)) or (dd and d(pt_d)),
@@ -288,17 +298,19 @@ class HumanVsAIGame:
     # Main step
     # ─────────────────────────────────────────
 
-    def play_step(self, ai_action: list[int], fps: int = 10
+    def play_step(self, fps: int = 10
                   ) -> tuple[bool, bool, int, int]:
         """
         Advance one frame.  Dead snakes are skipped silently.
-        Returns (human_done, ai_done, human_score, ai_score).
+        Returns (p1_done, p2_done, p1_score, p2_score).
         Both sides can be done independently.
         """
         self.frame += 1
 
-        # ── Keypress (human) ─────────────────────────────────
-        new_dir = self.human_dir
+        # ── Keypress (Both Players) ─────────────────────────────────
+        new_dir_p1 = self.p1_dir
+        new_dir_p2 = self.p2_dir
+        
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit(); raise SystemExit
@@ -309,57 +321,71 @@ class HumanVsAIGame:
                     self.show_pause_menu()
                     continue
                     
-                if self.human_alive:
-                    if event.key in (pygame.K_RIGHT, pygame.K_d):
-                        if self.human_dir != Direction.LEFT:  new_dir = Direction.RIGHT
+                if self.p1_alive:
+                    if event.key in (pygame.K_d,):
+                        if self.p1_dir != Direction.LEFT:  new_dir_p1 = Direction.RIGHT
                         self.waiting_to_start = False
-                    elif event.key in (pygame.K_LEFT, pygame.K_a):
-                        if self.human_dir != Direction.RIGHT: new_dir = Direction.LEFT
+                    elif event.key in (pygame.K_a,):
+                        if self.p1_dir != Direction.RIGHT: new_dir_p1 = Direction.LEFT
                         self.waiting_to_start = False
-                    elif event.key in (pygame.K_UP, pygame.K_w):
-                        if self.human_dir != Direction.DOWN:  new_dir = Direction.UP
+                    elif event.key in (pygame.K_w,):
+                        if self.p1_dir != Direction.DOWN:  new_dir_p1 = Direction.UP
                         self.waiting_to_start = False
-                    elif event.key in (pygame.K_DOWN, pygame.K_s):
-                        if self.human_dir != Direction.UP:    new_dir = Direction.DOWN
+                    elif event.key in (pygame.K_s,):
+                        if self.p1_dir != Direction.UP:    new_dir_p1 = Direction.DOWN
                         self.waiting_to_start = False
 
-        # ── Move human ────────────────────────────────────────
-        if self.human_alive and not self.waiting_to_start:
-            self.human_dir  = new_dir
-            next_pt = _move_pt(self.human_head, self.human_dir)
-            if self._human_collision(next_pt) or \
-               self.frame > 150 * len(self.human_snake):
-                self.human_alive = False
-            else:
-                self.human_head = next_pt
-                self.human_snake.insert(0, self.human_head)
-                if self.human_head == self.human_food:
-                    self.human_score += 1
-                    self._place_food_human()
-                else:
-                    self.human_snake.pop()
+                if self.p2_alive:
+                    if event.key in (pygame.K_RIGHT,):
+                        if self.p2_dir != Direction.LEFT:  new_dir_p2 = Direction.RIGHT
+                        self.waiting_to_start = False
+                    elif event.key in (pygame.K_LEFT,):
+                        if self.p2_dir != Direction.RIGHT: new_dir_p2 = Direction.LEFT
+                        self.waiting_to_start = False
+                    elif event.key in (pygame.K_UP,):
+                        if self.p2_dir != Direction.DOWN:  new_dir_p2 = Direction.UP
+                        self.waiting_to_start = False
+                    elif event.key in (pygame.K_DOWN,):
+                        if self.p2_dir != Direction.UP:    new_dir_p2 = Direction.DOWN
+                        self.waiting_to_start = False
 
-        # ── Move AI ───────────────────────────────────────────
-        if self.ai_alive and not self.waiting_to_start:
-            self.ai_dir  = _resolve_dir(self.ai_dir, ai_action)
-            next_pt = _move_pt(self.ai_head, self.ai_dir)
-            if self._ai_collision(next_pt) or \
-               self.frame > 150 * len(self.ai_snake):
-                self.ai_alive = False
+        # ── Move p1 ────────────────────────────────────────
+        if self.p1_alive and not self.waiting_to_start:
+            self.p1_dir  = new_dir_p1
+            next_pt = _move_pt(self.p1_head, self.p1_dir)
+            if self._p1_collision(next_pt) or \
+               self.frame > 150 * len(self.p1_snake):
+                self.p1_alive = False
             else:
-                self.ai_head = next_pt
-                self.ai_snake.insert(0, self.ai_head)
-                if self.ai_head == self.ai_food:
-                    self.ai_score += 1
-                    self._place_food_ai()
+                self.p1_head = next_pt
+                self.p1_snake.insert(0, self.p1_head)
+                if self.p1_head == self.p1_food:
+                    self.p1_score += 1
+                    self._place_food_p1()
                 else:
-                    self.ai_snake.pop()
+                    self.p1_snake.pop()
+
+        # ── Move P2 ───────────────────────────────────────────
+        if self.p2_alive and not self.waiting_to_start:
+            self.p2_dir  = new_dir_p2
+            next_pt = _move_pt(self.p2_head, self.p2_dir)
+            if self._p2_collision(next_pt) or \
+               self.frame > 150 * len(self.p2_snake):
+                self.p2_alive = False
+            else:
+                self.p2_head = next_pt
+                self.p2_snake.insert(0, self.p2_head)
+                if self.p2_head == self.p2_food:
+                    self.p2_score += 1
+                    self._place_food_p2()
+                else:
+                    self.p2_snake.pop()
 
         self._render()
         self.clock.tick(fps)
 
-        return (not self.human_alive), (not self.ai_alive), \
-               self.human_score, self.ai_score
+        return (not self.p1_alive), (not self.p2_alive), \
+               self.p1_score, self.p2_score
 
     # ─────────────────────────────────────────
     # Start Screen
@@ -371,7 +397,7 @@ class HumanVsAIGame:
         self._draw_grid()
         self._draw_divider()
 
-        title_surf = self.font_big.render("SNAKE: HUMAN VS AI", True, C.TEXT)
+        title_surf = self.font_big.render("GREEN SNAKE VS BLUE SNAKE", True, C.TEXT)
         self.display.blit(title_surf, title_surf.get_rect(center=(WIN_W//2, HEADER + 100)))
 
         BTN_W, BTN_H, gap = 240, 60, 20
@@ -500,33 +526,39 @@ class HumanVsAIGame:
         self._draw_divider()
         
         # Titles
-        title_hum = self.font_big.render("HUMAN TOP 10", True, C.H_SCORE)
-        title_ai  = self.font_big.render("AI TOP 10", True, C.AI_SCORE)
+        title_hum = self.font_big.render("P1 TOP 10", True, C.H_SCORE)
+        title_p2  = self.font_big.render("P2 TOP 10", True, C.P2_SCORE)
         
         self.display.blit(title_hum, title_hum.get_rect(center=(FIELD_W//2, HEADER + 60)))
-        self.display.blit(title_ai, title_ai.get_rect(center=(DIV_X + FIELD_W//2, HEADER + 60)))
+        self.display.blit(title_p2, title_p2.get_rect(center=(DIV_X + FIELD_W//2, HEADER + 60)))
         
         # Display Scores
         y_start = HEADER + 120
         gap = 30
         
         for i in range(10):
-            h_record = self.high_scores["human"][i] if i < len(self.high_scores["human"]) else {"score": 0, "name": "-"}
-            a_score = self.high_scores["ai"][i] if i < len(self.high_scores["ai"]) else 0
+            h_record = self.high_scores["p1"][i] if i < len(self.high_scores["p1"]) else {"score": 0, "name": "-"}
+            h_record2 = self.high_scores["p2"][i] if i < len(self.high_scores["p2"]) else {"score": 0, "name": "-"}
             
             h_score = h_record["score"]
             h_name = h_record["name"]
+            
+            p2_score = h_record2["score"]
+            p2_name = h_record2["name"]
             
             # Truncate slightly if name is very long just for display purposes
             disp_name = h_name[:15] + ".." if len(h_name) > 15 else h_name
             h_text_str = f"{i+1}. {disp_name.ljust(15)} {h_score}" if h_score > 0 else f"{i+1}. -"
             
+            disp_name2 = p2_name[:15] + ".." if len(p2_name) > 15 else p2_name
+            p2_text_str = f"{i+1}. {disp_name2.ljust(15)} {p2_score}" if p2_score > 0 else f"{i+1}. -"
+            
             h_txt = self.font_med.render(h_text_str, True, C.TEXT)
-            a_txt = self.font_med.render(f"{i+1}.   {a_score}", True, C.TEXT)
+            p2_txt = self.font_med.render(p2_text_str, True, C.TEXT)
             
             # center each text string inside its respective field
             self.display.blit(h_txt, h_txt.get_rect(center=(FIELD_W//2, y_start + i * gap)))
-            self.display.blit(a_txt, a_txt.get_rect(center=(DIV_X + FIELD_W//2, y_start + i * gap)))
+            self.display.blit(p2_txt, p2_txt.get_rect(center=(DIV_X + FIELD_W//2, y_start + i * gap)))
             
         BTN_W, BTN_H = 180, 50
         btn_back = pygame.Rect(10, WIN_H - BTN_H - 10, BTN_W, BTN_H)
@@ -620,11 +652,11 @@ class HumanVsAIGame:
                         pygame.quit(); raise SystemExit
             self.clock.tick(30)
 
-    def get_player_name_input(self) -> str:
+    def get_player_name_input(self, title_text: str = "NEW HIGH SCORE!") -> str:
         overlay = pygame.Surface((WIN_W, WIN_H), pygame.SRCALPHA)
         overlay.fill((0, 0, 0, 200))
 
-        title_surf = self.font_big.render("NEW HIGH SCORE!", True, (255, 215, 0))
+        title_surf = self.font_big.render(title_text, True, (255, 215, 0))
         sub_surf = self.font_med.render("Enter your name:", True, C.TEXT)
         
         name = ""
@@ -659,21 +691,28 @@ class HumanVsAIGame:
             self.clock.tick(30)
 
     def show_result_screen(self) -> str:
-        # Check for High Score Before Adding AI Scores
-        min_score = min([s["score"] for s in self.high_scores["human"]]) if len(self.high_scores["human"]) >= 10 else 0
+        # Check P1 High Score
+        min_p1 = min([s["score"] for s in self.high_scores["p1"]]) if len(self.high_scores["p1"]) >= 10 else 0
+        if self.p1_score > min_p1 or (self.p1_score > 0 and len(self.high_scores["p1"]) < 10):
+            p_name = self.get_player_name_input("P1: NEW HIGH SCORE!")
+            self.high_scores["p1"].append({"score": self.p1_score, "name": p_name})
+            self.high_scores["p1"].sort(key=lambda x: x["score"], reverse=True)
+            self.high_scores["p1"] = self.high_scores["p1"][:10]
+            
+        # Check P2 High Score
+        min_p2 = min([s["score"] for s in self.high_scores["p2"]]) if len(self.high_scores["p2"]) >= 10 else 0
+        if self.p2_score > min_p2 or (self.p2_score > 0 and len(self.high_scores["p2"]) < 10):
+            p_name = self.get_player_name_input("P2: NEW HIGH SCORE!")
+            self.high_scores["p2"].append({"score": self.p2_score, "name": p_name})
+            self.high_scores["p2"].sort(key=lambda x: x["score"], reverse=True)
+            self.high_scores["p2"] = self.high_scores["p2"][:10]
         
-        if self.human_score > min_score or (self.human_score > 0 and len(self.high_scores["human"]) < 10):
-            p_name = self.get_player_name_input()
-            self.high_scores["human"].append({"score": self.human_score, "name": p_name})
-            self.high_scores["human"].sort(key=lambda x: x["score"], reverse=True)
-            self.high_scores["human"] = self.high_scores["human"][:10]
+        self._save_scores()
         
-        self._add_scores()
-        
-        if self.human_score > self.ai_score:
-            title, tcol = "HUMAN WINS!", C.H_SCORE
-        elif self.ai_score > self.human_score:
-            title, tcol = "AI WINS!",   C.AI_SCORE
+        if self.p1_score > self.p2_score:
+            title, tcol = "P1 WINS!", C.H_SCORE
+        elif self.p2_score > self.p1_score:
+            title, tcol = "P2 WINS!",   C.P2_SCORE
         else:
             title, tcol = "DRAW!",      (220, 200, 80)
 
@@ -690,7 +729,7 @@ class HumanVsAIGame:
 
         t_surf  = self.font_big.render(title, True, tcol)
         sc_surf = self.font_med.render(
-            f"Human {self.human_score}   AI {self.ai_score}", True, C.TEXT)
+            f"P1 {self.p1_score}   P2 {self.p2_score}", True, C.TEXT)
 
         def draw(hp, hm, he):
             self.display.blit(overlay, (0, 0))
@@ -701,7 +740,7 @@ class HumanVsAIGame:
             pc = C.BTN_HOV if hp else C.BTN_BG
             pygame.draw.rect(self.display, pc, btn_p, border_radius=10)
             pygame.draw.rect(self.display, C.H_SCORE, btn_p, 2, border_radius=10)
-            pt = self.font_btn.render("PLAY AGAIN", True, C.BTN_TXT)
+            pt = self.font_btn.render("PLAY AGP2N", True, C.BTN_TXT)
             self.display.blit(pt, pt.get_rect(center=btn_p.center))
 
             # Menu
@@ -746,8 +785,8 @@ class HumanVsAIGame:
         self.display.fill(C.BG)
         self._draw_grid()
         self._draw_food()
-        self._draw_snake(self.human_snake, self.human_dir, human=True)
-        self._draw_snake(self.ai_snake,    self.ai_dir,    human=False)
+        self._draw_snake(self.p1_snake, self.p1_dir, p1=True)
+        self._draw_snake(self.p2_snake,    self.p2_dir,    p1=False)
         self._draw_dead_overlays()
         self._draw_divider()
         self._draw_walls()
@@ -770,15 +809,15 @@ class HumanVsAIGame:
                          pygame.Rect(0, HEADER, WIN_W, WIN_H - HEADER), 3)
 
     def _draw_food(self) -> None:
-        for food, col in ((self.human_food, C.FOOD_H), (self.ai_food, C.FOOD_AI)):
+        for food, col in ((self.p1_food, C.FOOD_H), (self.p2_food, C.FOOD_P2)):
             r = pygame.Rect(food.x, food.y, BLOCK, BLOCK)
             pygame.draw.rect(self.display, col, r, border_radius=10)
             shine = pygame.Rect(food.x+4, food.y+3, 5, 4)
             pygame.draw.ellipse(self.display, tuple(min(c+60, 255) for c in col), shine)
 
-    def _draw_snake(self, snake, direction, human: bool) -> None:
-        H = (C.H_HEAD,  C.H_BODY1,  C.H_BODY2)  if human else \
-            (C.AI_HEAD, C.AI_BODY1, C.AI_BODY2)
+    def _draw_snake(self, snake, direction, p1: bool) -> None:
+        H = (C.H_HEAD,  C.H_BODY1,  C.H_BODY2)  if p1 else \
+            (C.P2_HEAD, C.P2_BODY1, C.P2_BODY2)
         for i, pt in enumerate(snake):
             r = pygame.Rect(pt.x, pt.y, BLOCK, BLOCK)
             if i == 0:
@@ -799,11 +838,11 @@ class HumanVsAIGame:
 
     def _draw_dead_overlays(self) -> None:
         """Dim a side and print ELIMINATED when that snake has died."""
-        if not self.human_alive:
+        if not self.p1_alive:
             self.display.blit(self._dead_surf_l, (0, HEADER))
             txt = self.font_elim.render("ELIMINATED", True, (200, 80, 80))
             self.display.blit(txt, txt.get_rect(center=(FIELD_W // 2, WIN_H // 2)))
-        if not self.ai_alive:
+        if not self.p2_alive:
             self.display.blit(self._dead_surf_r, (DIV_X, HEADER))
             txt = self.font_elim.render("ELIMINATED", True, (80, 140, 220))
             self.display.blit(txt, txt.get_rect(center=(DIV_X + FIELD_W // 2, WIN_H // 2)))
@@ -813,17 +852,17 @@ class HumanVsAIGame:
         pygame.draw.line(self.display, C.BORDER, (0, HEADER), (WIN_W, HEADER), 1)
         pygame.draw.line(self.display, C.DIVIDER, (DIV_X, 0), (DIV_X, HEADER), 2)
 
-        h_lbl = self.font_label.render("HUMAN", True, C.H_SCORE)
-        h_scr = self.font_score.render(f"{self.human_score:>3}", True, C.H_SCORE)
+        h_lbl = self.font_label.render("P1", True, C.H_SCORE)
+        h_scr = self.font_score.render(f"{self.p1_score:>3}", True, C.H_SCORE)
         self.display.blit(h_lbl, (10, 6))
         self.display.blit(h_scr, (10 + h_lbl.get_width() + 8,
                                   (HEADER - h_scr.get_height()) // 2))
 
-        ai_scr = self.font_score.render(f"{self.ai_score:>3}", True, C.AI_SCORE)
-        ai_lbl = self.font_label.render("AI",    True, C.AI_SCORE)
-        rx = WIN_W - ai_scr.get_width() - ai_lbl.get_width() - 18
-        self.display.blit(ai_scr, (rx, (HEADER - ai_scr.get_height()) // 2))
-        self.display.blit(ai_lbl, (rx + ai_scr.get_width() + 8, 6))
+        p2_scr = self.font_score.render(f"{self.p2_score:>3}", True, C.P2_SCORE)
+        p2_lbl = self.font_label.render("P2",    True, C.P2_SCORE)
+        rx = WIN_W - p2_scr.get_width() - p2_lbl.get_width() - 18
+        self.display.blit(p2_scr, (rx, (HEADER - p2_scr.get_height()) // 2))
+        self.display.blit(p2_lbl, (rx + p2_scr.get_width() + 8, 6))
 
         vs = self.font_label.render("VS", True, C.DIVIDER)
         self.display.blit(vs, vs.get_rect(center=(DIV_X, HEADER // 2)))

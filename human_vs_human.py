@@ -11,8 +11,8 @@ Train first with: python train.py
 """
 
 import torch
-from hvai_game import HumanVsAIGame
-from model import Linear_QNet
+import pygame
+from hvh_game import HumanVsHumanGame
 
 # ── Dynamic speed (same formula as human_play / watch) ───────
 BASE_FPS = 10
@@ -25,15 +25,7 @@ def dynamic_fps(snake_len: int) -> int:
 
 
 def main() -> None:
-    model = Linear_QNet(input_size=11, hidden_size=256, output_size=3)
-    loaded = model.load()
-    if not loaded:
-        print("⚠️  No trained model found at ./model/model.pth")
-        print("   Train first: python train.py")
-        print("   Continuing with untrained network (random-ish AI).\n")
-    model.eval()
-
-    game = HumanVsAIGame()
+    game = HumanVsHumanGame()
     print("Controls: Arrow keys / WASD  |  P = pause  |  R = restart  |  Q / Esc = exit")
 
     while True:
@@ -48,26 +40,14 @@ def main() -> None:
             game.reset()
             # ── Play Loop ───────────────
             while True:
-                # ── AI picks action ───────────────────────────────
-                if game.ai_alive:
-                    state   = game.get_ai_state()
-                    state_t = torch.tensor(state, dtype=torch.float).unsqueeze(0)
-                    with torch.no_grad():
-                        q_vals = model(state_t)
-                    idx    = int(q_vals.argmax().item())
-                    action = [0, 0, 0]
-                    action[idx] = 1
-                else:
-                    action = [1, 0, 0]   # dummy, snake is dead — ignored in play_step
-    
                 # ── Dynamic FPS ───────────────────────────────────
-                fps = dynamic_fps(max(len(game.human_snake), len(game.ai_snake)))
+                fps = dynamic_fps(max(len(game.p1_snake), len(game.p2_snake)))
     
                 # ── Step ──────────────────────────────────────────
-                h_done, ai_done, h_score, ai_score = game.play_step(action, fps=fps)
+                p1_done, p2_done, p1_score, p2_score = game.play_step(fps=fps)
     
                 # ── BOTH must be dead to end the round ───────────
-                if not game.human_alive and not game.ai_alive:
+                if not game.p1_alive and not game.p2_alive:
                     break
 
             res = game.show_result_screen()   # blocks until PLAY AGAIN, MENU or EXIT

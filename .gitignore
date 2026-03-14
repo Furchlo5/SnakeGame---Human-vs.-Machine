@@ -4,4 +4,5 @@ model/
 TODO.txt
 __pycache__/
 *.pyc
+TODO.txt
 .DS_Store

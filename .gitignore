@@ -1,6 +1,7 @@
 .venv/
 .venv312/
 model/
+TODO.txt
 __pycache__/
 *.pyc
 .DS_Store
